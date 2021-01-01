@@ -2,28 +2,32 @@ import logging
 import scripts as s
 
 def pass_line_only(bankroll, max_rolls, min_bet, log_level=logging.INFO):
+    logging.basicConfig(level=log_level)
     r = s.CrapsRound(min_bet, bankroll, log_level)
-    i = 0
+    i = 1
     bank_list = []
 
     while i < max_rolls:
+        
         if r.bank < 0:
             break
-
-        if r.pass_bet == 0:
-            r.bet_pass(min_bet)
-
+        
         if r.point < 0:
+        
+            logging.debug(f"Bank = ${r.bank}")
             bank_list.append(r.bank)
+            
+            r.bet_pass(min_bet)
             r.comeout_roll()
         else:
             # extend rolls so we finish the round
-            if i == max_rolls - 1:
+            if i == max_rolls:
                 i -= 1
             r.keep_rolling()
 
         i += 1
-
+    
+    logging.debug(f"Bank = ${r.bank}")
     bank_list.append(r.bank)
     return r.num_games, r.num_rolls, r.bank, bank_list
 

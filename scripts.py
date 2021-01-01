@@ -53,9 +53,8 @@ class CrapsRound():
         self.bank = bankroll
         self.num_rolls = 0
         self.num_games = 0
-        logging.basicConfig(level=log_level)
         self.logger = logging.getLogger()
-        # self.place_bets_on = False
+        self.logger.setLevel(log_level)
         self.keep_place_bets_on = place_bets_on
 
         self._reset_indicators()
@@ -103,40 +102,50 @@ class CrapsRound():
 
     # BETTING functions ----------------------------------------------------------
     def bet_pass(self, bet):
-        # check that we don't already have a pass bet:
+        # check that we don't already have a pass bet
+        # and that there hasn't already been a comeout roll
         if self.pass_bet != 0 or self.point > 0:
-            # self.logger.error('error! There is already a pass bet')
-            self.logger.error('You cannot place a Pass bet now')
+            raise CrapsError('You cannot place a Pass bet now')
         else:
             self.pass_bet += bet
-            self.logger.debug('Placing pass bet')
+            self.bank -= bet
+            self.logger.debug(f'Placing Pass bet of ${bet}')
+            # self.show_bank()
 
     def bet_dont_pass(self, bet):
-        # check that we don't already have a don't pass bet:
+        # check that we don't already have a don't pass bet
+        # and that there hasn't already been a comeout roll
         if self.dn_pass_bet != 0 or self.point > 0:
-            # self.logger.error('error! There is already a pass bet')
-            self.logger.error('You cannot place a Pass bet now')
+            raise CrapsError('You cannot place a Pass bet now')
         else:
             self.dn_pass_bet += bet
-            self.logger.debug("Placing don't pass bet")
+            self.bank -= bet
+            self.logger.debug(f"Placing Don't Pass bet of ${bet}")
+            # self.show_bank()
 
     def bet_come(self, bet):
         # check that we don't already have a come bet
         # and that there has already been a comeout roll
         if self.come_bet != 0 | self.point < 0:
-            self.logger.error('Cannot place a come bet')
+            raise CrapsError('You cannot place a Come bet now')
+        
         else:
             self.come_bet += bet
-            self.logger.debug('Placing come bet')
+            self.bank -= bet
+            self.logger.debug(f'Placing Come bet of ${bet}')
+            # self.show_bank()
 
     def bet_dont_come(self, bet):
         # check that we don't already have a bet
         # and that there has already been a comeout roll
         if self.dn_come_bet != 0 | self.point < 0:
-            self.logger.error("Cannot place a don't come bet")
+            raise CrapsError('You cannot place a Come bet now')
         else:
             self.dn_come_bet += bet
-            self.logger.debug("Placing don't come bet")
+            self.bank -= bet
+            self.logger.debug(f"Placing Don't Come bet of ${bet}")
+            # self.show_bank()
+
 
     def bet_place(self, bet, number): 
         '''
@@ -195,18 +204,40 @@ class CrapsRound():
     
 
     def _payout_pass_bets(self):
-        self.logger.debug(f'Craps: {self.craps}')
-        if self.natural: # 7 or 11 on comeout roll
-            self.bank += self.pass_bet
-            self.bank -= self.dn_pass_bet
+        """
+        NOTE:
+        - already decreased bank by bet amount when bet was made, so don't
+          subtract bet amount again here
+        """
+        # self.logger.debug(f'Craps: {self.craps}')
+        end_of_game=False
+        starting_bankroll = self.bank
 
-        if self.craps: # 2,3, or 12 on comeout roll; 7 or 11 before point hit
-            self.bank -= self.pass_bet
-            self.bank += self.dn_pass_bet
+        if self.natural: # 7 or 11 on comeout roll
+            self.bank += 2*self.pass_bet
+            # self.bank -= self.dn_pass_bet 
+            end_of_game = True
+
+        if self.craps: # 2, 3, or 12 on comeout roll; 7 or 11 before point hit
+            # self.bank -= self.pass_bet
+            self.bank += 2*self.dn_pass_bet
+            end_of_game = True
 
         if self.point_hit: #  point rolled before craps
-            self.bank += self.pass_bet
-            self.bank -= self.dn_pass_bet
+            self.bank += 2*self.pass_bet
+            # self.bank -= self.dn_pass_bet
+            end_of_game = True
+        
+        if end_of_game:
+            ending_bankroll = self.bank
+            win_amt = ending_bankroll - starting_bankroll
+            if win_amt > 0:
+                self.logger.debug(f"You won ${int(win_amt/2)}")
+                # self.show_bank()
+            self.logger.debug("")
+            self._reset_indicators()
+            self._reset_pass_bets()
+
 
 
     def _payout_come_bets(self):
@@ -222,8 +253,9 @@ class CrapsRound():
 
 
     def _handle_come_bets(self, roll):
-        '''NOTES:
-        Need this as a separate function, because
+        '''
+        NOTE:
+        Need this as a separate function, because it
             needs to be called from a "regular" roll
             and from a comeout roll
         Peform pay-out and resetting of variables here
@@ -231,7 +263,7 @@ class CrapsRound():
             do not depend on roll, so they can be called without
             that argument/information)
         '''
-        # self.logger.debug('Come points are: {}'.format(self.come_points))
+        self.logger.debug('Come points are: {}'.format(self.come_points))
 
         if self.craps:
             # lose come bets
@@ -241,16 +273,16 @@ class CrapsRound():
 
         # if a come-point is hit
         elif roll in self.come_points:
-            # pay out come bet for this point
+            # pay out Come bet for this point
             self.logger.debug('Come bet won for {}!'.format(roll))
             cb_idx = point_list.index(roll)
             self.bank += self.come_bets[cb_idx]
 
-            # reset come bet & come point list for this number
+            # reset Come bet & come point list for this number
             self.come_bets[cb_idx] = 0
             self.come_points.remove(roll)
 
-        # establish come point if come bet on
+        # establish Come point if come bet on
         if self.come_bet > 0:
             # add point to come_points list
             # add come bet to come_bets list
@@ -262,7 +294,8 @@ class CrapsRound():
 
 
     def _handle_place_bets(self, roll):
-        '''NOTE: 
+        '''
+        NOTE: 
         - function is only called if self.place_bets_on == True
         - place bets stay on after winning
         '''
@@ -307,17 +340,14 @@ class CrapsRound():
             roll = roll_dice()
         else:
             roll = test_dice(val)
-        self.logger.debug(f"You rolled {roll[2]} ({roll[0]} + {roll[1]})")
+        self.logger.debug(f"You rolled a {roll[2]} ({roll[0]} + {roll[1]})")
         return roll
 
 
     def comeout_roll(self, test=False, val=0):
-        # if self.come_bet != 0:
-        #     raise CrapsError('No come bets allowed on come-out roll!')
 
         self.num_games += 1
         self.logger.debug(f'***** Game # {self.num_games} *****')
-        self.logger.debug(f'Bank = ${self.bank}')
 
         roll = self._roll(test, val)[2]
 
