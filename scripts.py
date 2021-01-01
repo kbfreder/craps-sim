@@ -44,7 +44,7 @@ class CrapsError(Error):
     def __init__(self, message):
         self.message = message
 
-class CrapsRound():
+class CrapsGame():
     def __init__(self, min_bet, bankroll, log_level=logging.INFO, place_bets_on=False):
         '''
         place_bets_on = whether to keep place bets on during comeout roll
@@ -52,7 +52,7 @@ class CrapsRound():
         self.min_bet = min_bet
         self.bank = bankroll
         self.num_rolls = 0
-        self.num_games = 0
+        self.num_rounds = 0
         self.logger = logging.getLogger()
         self.logger.setLevel(log_level)
         self.keep_place_bets_on = place_bets_on
@@ -210,25 +210,25 @@ class CrapsRound():
           subtract bet amount again here
         """
         # self.logger.debug(f'Craps: {self.craps}')
-        end_of_game=False
+        end_of_round=False
         starting_bankroll = self.bank
 
         if self.natural: # 7 or 11 on comeout roll
             self.bank += 2*self.pass_bet
             # self.bank -= self.dn_pass_bet 
-            end_of_game = True
+            end_of_round = True
 
         if self.craps: # 2, 3, or 12 on comeout roll; 7 or 11 before point hit
             # self.bank -= self.pass_bet
             self.bank += 2*self.dn_pass_bet
-            end_of_game = True
+            end_of_round = True
 
         if self.point_hit: #  point rolled before craps
             self.bank += 2*self.pass_bet
             # self.bank -= self.dn_pass_bet
-            end_of_game = True
+            end_of_round = True
         
-        if end_of_game:
+        if end_of_round:
             ending_bankroll = self.bank
             win_amt = ending_bankroll - starting_bankroll
             if win_amt > 0:
@@ -346,8 +346,8 @@ class CrapsRound():
 
     def comeout_roll(self, test=False, val=0):
 
-        self.num_games += 1
-        self.logger.debug(f'***** Game # {self.num_games} *****')
+        self.num_rounds += 1
+        self.logger.debug(f'***** Round # {self.num_rounds} *****')
 
         roll = self._roll(test, val)[2]
 
