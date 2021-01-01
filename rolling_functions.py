@@ -43,11 +43,13 @@ def dont_pass_line_only(bankroll, max_rolls, min_bet, log_level=logging.INFO):
         if r.bank < 0:
             break
 
-        if r.dn_pass_bet == 0:
-            r.bet_dont_pass(min_bet)
+        # if r.dn_pass_bet == 0:
+        #     r.bet_dont_pass(min_bet)
 
         if r.point < 0:
+            r.show_bank()
             bank_list.append(r.bank)
+            r.bet_dont_pass(min_bet)
             r.comeout_roll()
         else:
             # extend rolls so we finish the round
@@ -57,11 +59,12 @@ def dont_pass_line_only(bankroll, max_rolls, min_bet, log_level=logging.INFO):
 
         i += 1
 
+    r.show_bank()
     bank_list.append(r.bank)
     return r.num_rounds, r.num_rolls, r.bank, bank_list
 
 
-def pass_and_come(bankroll, max_rolls, min_bet, max_num_bets, log_level=logging.INFO):
+def pass_and_come(bankroll, max_rolls, min_bet, max_come_bets, log_level=logging.INFO):
     r = s.CrapsGame(min_bet, bankroll, log_level)
     i = 1
     bank_list = []
@@ -71,16 +74,20 @@ def pass_and_come(bankroll, max_rolls, min_bet, max_num_bets, log_level=logging.
         if r.bank < 0:
             break
 
-        if r.pass_bet == 0:
-            r.bet_pass(min_bet)
+        # if r.pass_bet == 0:
+        #     r.bet_pass(min_bet)
+
         if r.point < 0:
+            r.show_bank()
             bank_list.append(r.bank)
+            
+            r.bet_pass(min_bet)
             r.comeout_roll()
         else:
             # extend rolls so we finish the round
             if i == max_rolls:
                 i -= 1
-            if len(r.come_points) < max_num_bets:
+            if len(r.come_points) < max_come_bets:
                 r.bet_come(min_bet)
             r.keep_rolling()
         i += 1
